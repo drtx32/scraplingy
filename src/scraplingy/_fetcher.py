@@ -22,6 +22,11 @@ def _require_web_url(url: str) -> str:
 
 
 def _html_to_markdown(html: str) -> str:
+    # Strip NUL bytes: some upstream servers (e.g. x.com's no-JS shell) pad
+    # responses with \x00 runs, which pass through BeautifulSoup and
+    # markdownify verbatim and produce leading garbage in the output.
+    if "\x00" in html:
+        html = html.replace("\x00", "")
     soup = BeautifulSoup(html, "lxml")
     for script in soup(["script", "style"]):
         script.extract()
