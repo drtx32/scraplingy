@@ -1,3 +1,4 @@
+from os import environ
 from logging import getLogger
 from traceback import format_exc
 
@@ -9,6 +10,12 @@ from scraplingy._fetcher import (
 )
 
 mcp = FastMCP("scraplingy")
+
+# Configure Playwright to skip browser download when using external CDP
+_has_external = bool(environ.get("CDP_URL") or environ.get("CLOAKBROWSER_API"))
+if _has_external:
+    environ.setdefault("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD", "1")
+    environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
 
 
 @mcp.tool()
