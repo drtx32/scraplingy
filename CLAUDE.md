@@ -46,9 +46,11 @@ Request flow: `mcp.py` (FastMCP tool definitions) → `_fetcher.py` (content pip
 - `stealth` — `StealthyFetcher.async_fetch` headless+network_idle (~3-8s)
 - `max-stealth` — same but with WebRTC blocked and resources/images not blocked (10s+)
 
-Scrapling import is deferred inside `browse_url` with stdout redirected to `/dev/null` to suppress Scrapling's noisy startup output.
+Scrapling import is deferred inside `browse_url` with stdout redirected to `/dev/null` to suppress Scrapling's noisy startup output. `browse_url` accepts a `cookies=` list[dict] that is forwarded to all three modes (None means anonymous fetch).
 
-**`_fetcher.py`** — content pipeline: calls `browse_url`, optionally converts HTML→Markdown via `_markdownify.py`, applies pagination (`start_index`/`max_length`) or regex pattern extraction, and wraps everything in `METADATA: {json}\n\n[content]`. The metadata JSON includes `total_length`, `retrieved_length`, `is_truncated`, `percent_retrieved`, and optionally `start_index` / `match_count`.
+**`_cookies.py`** — Netscape `cookies.txt` parser. Pure function `parse_netscape_cookies(path) -> list[dict] | None`. Never raises: any failure (missing file, OS error, no parseable lines) returns None, and the caller treats None as "no cookies".
+
+**`_fetcher.py`** — content pipeline: calls `browse_url`, optionally converts HTML→Markdown via `_markdownify.py`, applies pagination (`start_index`/`max_length`) or regex pattern extraction, and wraps everything in `METADATA: {json}\n\n[content]`. The metadata JSON includes `total_length`, `retrieved_length`, `is_truncated`, `percent_retrieved`, and optionally `start_index` / `match_count`. Both `fetch_page_impl` and `fetch_pattern_impl` accept a `cookies_file: str | None` parameter; they parse it via `_cookies.parse_netscape_cookies` and forward the result to `browse_url`.
 
 Pattern extraction (`_search_content`) compiles the regex, merges overlapping context windows around matches, and delimits sections with `॥๛॥` followed by `[Position: start-end]` so callers can issue targeted follow-up `s_fetch_page` requests with specific `start_index` values.
 

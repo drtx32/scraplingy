@@ -44,6 +44,9 @@ scraplingy fetch "https://example.com" --wait 3000
 
 # Max content length (0 = no limit)
 scraplingy fetch "https://example.com" --max-length 50000
+
+# Fetch login-gated content with cookies (Netscape cookies.txt)
+scraplingy fetch "https://example.com" --cookies ./cookies.txt
 ```
 
 ### Fetch Modes
@@ -94,6 +97,7 @@ Fetches a complete web page with pagination support.
 | `max_length` | int | 0 | Max characters to return (0 = no limit) |
 | `start_index` | int | 0 | Start output at this character index (for pagination) |
 | `wait` | int | 2000 | Milliseconds to wait after page load for JS rendering |
+| `cookies_file` | string | null | Path to a Netscape-format `cookies.txt` file. If missing or malformed, silently proceeds without cookies. |
 
 Returns: `METADATA: {json}\n\n[content]`
 
@@ -110,8 +114,33 @@ Extracts content matching regex patterns from web pages.
 | `max_length` | int | 0 | Max characters to return (0 = no limit) |
 | `context_chars` | int | 200 | Characters to include before and after each match |
 | `wait` | int | 2000 | Milliseconds to wait after page load for JS rendering |
+| `cookies_file` | string | null | Path to a Netscape-format `cookies.txt` file. If missing or malformed, silently proceeds without cookies. |
 
 Returns: `METADATA: {json}\n\n[matched content delimited with ॥๛॥]`
+
+## Cookies (Login-Gated Content)
+
+Both `s_fetch_page` and `s_fetch_pattern` accept a `cookies_file` parameter
+(path to a Netscape-format `cookies.txt`). All three fetch modes (`basic`,
+`stealth`, `max-stealth`) honor it.
+
+Export cookies from your browser using a standard extension (e.g. "Get
+cookies.txt LOCALLY" for Chrome / Firefox), then pass the file:
+
+```bash
+# CLI
+scraplingy fetch "https://example.com/protected" --cookies ./cookies.txt
+```
+
+```python
+# MCP tool call
+s_fetch_page(url="https://example.com/protected", cookies_file="./cookies.txt")
+```
+
+**Behavior:** if the file is missing, unreadable, or contains no parseable
+cookies, scraplingy silently falls back to an anonymous fetch — it does not
+crash and does not warn. You are responsible for keeping your cookies file
+current.
 
 ## CloakBrowser Integration
 

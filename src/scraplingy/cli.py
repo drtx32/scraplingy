@@ -56,15 +56,22 @@ def cli():
     type=int,
     help="Wait milliseconds after page load for JS rendering (default: 2000)",
 )
-def fetch(url, mode, fmt, max_length, wait):
+@click.option(
+    "--cookies",
+    "cookies_file",
+    type=click.Path(dir_okay=False),
+    default=None,
+    help="Path to a Netscape-format cookies.txt file (optional).",
+)
+def fetch(url, mode, fmt, max_length, wait, cookies_file):
     """Fetch a URL and print content to stdout.
 
     Example: scraplingy fetch "https://example.com" --mode stealth
     """
-    asyncio.run(_fetch_impl(url, mode, fmt, max_length, wait))
+    asyncio.run(_fetch_impl(url, mode, fmt, max_length, wait, cookies_file))
 
 
-async def _fetch_impl(url, mode, fmt, max_length, wait):
+async def _fetch_impl(url, mode, fmt, max_length, wait, cookies_file):
     # Suppress INFO logs in CLI fetch mode only (MCP keeps them)
     try:
         from loguru import logger
@@ -78,7 +85,9 @@ async def _fetch_impl(url, mode, fmt, max_length, wait):
     from scraplingy._fetcher import fetch_page_impl
 
     try:
-        result = await fetch_page_impl(url, mode, fmt, max_length, 0, wait=wait)
+        result = await fetch_page_impl(
+            url, mode, fmt, max_length, 0, wait=wait, cookies_file=cookies_file
+        )
         # Strip METADATA prefix, output only content
         if result.startswith("METADATA:"):
             _, _, content = result.partition("\n\n")

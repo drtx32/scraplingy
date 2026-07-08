@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
+from scraplingy._cookies import parse_netscape_cookies
 from scraplingy._markdownify import _CustomMarkdownify
 from scraplingy._scrapling import browse_url
 
@@ -83,9 +84,18 @@ def _create_metadata(
 
 
 async def fetch_page_impl(
-    url: str, mode: str, format: str, max_length: int, start_index: int, wait: int = 2000
+    url: str,
+    mode: str,
+    format: str,
+    max_length: int,
+    start_index: int,
+    wait: int = 2000,
+    cookies_file: str | None = None,
 ) -> str:
-    page = await browse_url(_require_web_url(url), mode, wait=wait)
+    cookies = parse_netscape_cookies(cookies_file) if cookies_file else None
+    page = await browse_url(
+        _require_web_url(url), mode, wait=wait, cookies=cookies
+    )
     is_markdown = format == "markdown"
     full_content = (
         _html_to_markdown(page.html_content) if is_markdown else page.html_content
@@ -113,8 +123,12 @@ async def fetch_pattern_impl(
     max_length: int,
     context_chars: int,
     wait: int = 2000,
+    cookies_file: str | None = None,
 ) -> str:
-    page = await browse_url(_require_web_url(url), mode, wait=wait)
+    cookies = parse_netscape_cookies(cookies_file) if cookies_file else None
+    page = await browse_url(
+        _require_web_url(url), mode, wait=wait, cookies=cookies
+    )
     is_markdown = format == "markdown"
     full_content = (
         _html_to_markdown(page.html_content) if is_markdown else page.html_content

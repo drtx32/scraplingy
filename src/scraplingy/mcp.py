@@ -26,6 +26,7 @@ async def s_fetch_page(
     max_length: int = 0,
     start_index: int = 0,
     wait: int = 2000,
+    cookies_file: str | None = None,
 ) -> str:
     """Fetches a complete web page with pagination support. Retrieves content from websites with bot-detection avoidance. For best performance, start with 'basic' mode (fastest), then only escalate to 'stealth' or 'max-stealth' modes if basic mode fails. Content is returned as 'METADATA: {json}\\n\\n[content]' where metadata includes length information and truncation status.
 
@@ -36,9 +37,12 @@ async def s_fetch_page(
         max_length: Maximum number of characters to return (0 = no limit)
         start_index: On return output starting at this character index, useful if a previous fetch was truncated and more content is required.
         wait: Milliseconds to wait after page load for JS rendering (default: 2000)
+        cookies_file: Path to a Netscape-format cookies.txt file. If missing or malformed, silently proceeds without cookies.
     """
     try:
-        result = await fetch_page_impl(url, mode, format, max_length, start_index, wait=wait)
+        result = await fetch_page_impl(
+            url, mode, format, max_length, start_index, wait=wait, cookies_file=cookies_file
+        )
         return result
     except Exception as e:
         logger = getLogger("scraplingy")
@@ -56,6 +60,7 @@ async def s_fetch_pattern(
     max_length: int = 0,
     context_chars: int = 200,
     wait: int = 2000,
+    cookies_file: str | None = None,
 ) -> str:
     """Extracts content matching regex patterns from web pages. Retrieves specific content from websites with bot-detection avoidance. For best performance, start with 'basic' mode (fastest), then only escalate to 'stealth' or 'max-stealth' modes if basic mode fails. Returns matched content as 'METADATA: {json}\\n\\n[content]' where metadata includes match statistics and truncation information. Each matched content chunk is delimited with '॥๛॥' and prefixed with '[Position: start-end]' indicating its byte position in the original document, allowing targeted follow-up requests with s-fetch-page using specific start_index values.
 
@@ -67,10 +72,11 @@ async def s_fetch_pattern(
         max_length: Maximum number of characters to return (0 = no limit)
         context_chars: Number of characters to include before and after each match
         wait: Milliseconds to wait after page load for JS rendering (default: 2000)
+        cookies_file: Path to a Netscape-format cookies.txt file. If missing or malformed, silently proceeds without cookies.
     """
     try:
         result = await fetch_pattern_impl(
-            url, search_pattern, mode, format, max_length, context_chars, wait=wait
+            url, search_pattern, mode, format, max_length, context_chars, wait=wait, cookies_file=cookies_file
         )
         return result
     except Exception as e:
