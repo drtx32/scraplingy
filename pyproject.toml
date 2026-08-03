@@ -19,7 +19,7 @@ dependencies = [
     "lxml>=6.0.2",
     "markdownify>=1.2.0",
     "mcp>=1.28.0,<2",
-    "scrapling[fetchers]>=0.4.7",
+    "scrapling[fetchers]~=0.4.7",
     # Indirect dependencies (security constraints)
     "cryptography>=48.0.1",
     "idna>=3.15",
