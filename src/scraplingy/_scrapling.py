@@ -8,6 +8,11 @@ try:
 except ImportError:
     ClientSession = None
 
+try:
+    from playwright.async_api import async_playwright
+except ImportError:
+    async_playwright = None
+
 
 async def _resolve_cloakbrowser_cdp(api_url: str) -> str | None:
     """Resolve CDP URL from CloakBrowser HTTP API.
@@ -30,6 +35,39 @@ async def _resolve_cloakbrowser_cdp(api_url: str) -> str | None:
         return None
 
 
+async def _reset_singleton_browser_tab(cdp_url: str | None) -> bool:
+    """Best-effort reset for a shared CDP browser session.
+
+    If the browser looks singleton-sized (one context, one page), keep the
+    tab alive and navigate it to about:blank so other agents do not inherit the
+    last task's page state. Local, non-CDP Playwright launches are left alone.
+    """
+    if not cdp_url or async_playwright is None:
+        return False
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.connect_over_cdp(
+                endpoint_url=cdp_url
+            )
+            contexts = list(browser.contexts)
+            if len(contexts) != 1:
+                return False
+
+            pages = list(contexts[0].pages)
+            if len(pages) != 1:
+                return False
+
+            page = pages[0]
+            if page.is_closed() or page.url == "about:blank":
+                return False
+
+            await page.goto("about:blank", wait_until="commit", timeout=5000)
+            return True
+    except Exception:
+        return False
+
+
 async def browse_url(
     url: str,
     mode: str,
@@ -46,26 +84,31 @@ async def browse_url(
 
         if mode == "basic":
             return await AsyncFetcher.get(url, stealthy_headers=True, cookies=cookies)
-        elif mode == "stealth":
-            return await StealthyFetcher.async_fetch(
-                url,
-                headless=True,
-                network_idle=True,
-                cdp_url=cdp_url,
-                wait=wait,
-                cookies=cookies,
-            )
-        elif mode == "max-stealth":
-            return await StealthyFetcher.async_fetch(
-                url,
-                headless=True,
-                block_webrtc=True,
-                network_idle=True,
-                disable_resources=False,
-                block_images=False,
-                cdp_url=cdp_url,
-                wait=wait,
-                cookies=cookies,
-            )
-        else:
-            raise ValueError(f"Unknown mode: {mode}")
+
+        try:
+            if mode == "stealth":
+                return await StealthyFetcher.async_fetch(
+                    url,
+                    headless=True,
+                    network_idle=True,
+                    cdp_url=cdp_url,
+                    wait=wait,
+                    cookies=cookies,
+                )
+            elif mode == "max-stealth":
+                return await StealthyFetcher.async_fetch(
+                    url,
+                    headless=True,
+                    block_webrtc=True,
+                    network_idle=True,
+                    disable_resources=False,
+                    block_images=False,
+                    cdp_url=cdp_url,
+                    wait=wait,
+                    cookies=cookies,
+                )
+            else:
+                raise ValueError(f"Unknown mode: {mode}")
+        finally:
+            if mode in {"stealth", "max-stealth"} and cdp_url:
+                await _reset_singleton_browser_tab(cdp_url)

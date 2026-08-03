@@ -157,6 +157,13 @@ export CDP_URL="ws://localhost:9222"
 scraplingy fetch "https://example.com"
 ```
 
+When `CLOAKBROWSER_API` or `CDP_URL` is set, scraplingy connects to the shared
+CDP browser and, after a fetch, best-effort resets a singleton browser
+session by navigating the lone tab to `about:blank` instead of closing it.
+That keeps a single shared browser instance warm without leaving the last page
+behind. If neither environment variable is set, scraplingy falls back to its
+own temporary Playwright Chromium session and leaves shared browsers alone.
+
 ## Claude Code Skill
 
 A skill is available for Claude Code that provides a `/s-fetch` slash command. See [CLAUDE.md](./CLAUDE.md) for setup instructions.
