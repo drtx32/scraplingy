@@ -148,6 +148,10 @@ async def fetch_pattern_impl(
         metadata_json = _create_metadata(original_length, 0, False, None, 0)
         return f"METADATA: {metadata_json}\n\n"
 
+    # 0 means no limit (parity with fetch_page_impl)
+    if max_length == 0:
+        max_length = 999999999
+
     truncated_content = matched_content[:max_length]
     is_truncated = len(matched_content) > max_length
 
