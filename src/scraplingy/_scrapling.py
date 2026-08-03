@@ -87,13 +87,24 @@ async def browse_url(
         cdp_url = await _resolve_cloakbrowser_cdp(environ["CLOAKBROWSER_API"])
 
     with open(devnull, "w") as nullfd, redirect_stdout(nullfd), redirect_stderr(nullfd):
-        from scrapling.fetchers import AsyncFetcher, StealthyFetcher
-
+        # Import scrapling fetchers inside this block and inside each mode
+        # branch so that browsers / headers subsystems are only initialised
+        # for the branch that actually needs them. Importing either
+        # ``AsyncFetcher`` or ``StealthyFetcher`` transitively pulls in
+        # ``scrapling.engines.toolbelt.fingerprints``, which calls
+        # ``browserforge`` at module load time. On some platforms that call
+        # fails with ``No headers based on this input can be generated``
+        # before the basic-mode code path runs; deferring the import keeps
+        # callers that only ever use ``basic`` from paying that cost.
         if mode == "basic":
+            from scrapling.fetchers.requests import AsyncFetcher
+
             return await AsyncFetcher.get(url, stealthy_headers=False, cookies=cookies)
 
         try:
             if mode == "stealth":
+                from scrapling.fetchers.stealth_chrome import StealthyFetcher
+
                 return await StealthyFetcher.async_fetch(
                     url,
                     headless=True,
@@ -104,6 +115,8 @@ async def browse_url(
                     useragent=_STEALTH_USER_AGENT,
                 )
             elif mode == "max-stealth":
+                from scrapling.fetchers.stealth_chrome import StealthyFetcher
+
                 return await StealthyFetcher.async_fetch(
                     url,
                     headless=True,

@@ -1,7 +1,8 @@
 import asyncio
 from types import SimpleNamespace
 
-import scrapling.fetchers as scrapling_fetchers
+import scrapling.fetchers.requests as scrapling_requests
+import scrapling.fetchers.stealth_chrome as scrapling_stealth
 import scraplingy._scrapling as scrapling_mod
 
 
@@ -120,12 +121,12 @@ def test_browse_url_resets_resolved_cloakbrowser_tab(monkeypatch) -> None:
     monkeypatch.setattr(scrapling_mod, "_reset_singleton_browser_tab", fake_cleanup)
     monkeypatch.setenv("CLOAKBROWSER_API", "https://cloakbrowser-api.example")
     monkeypatch.setattr(
-        scrapling_fetchers,
+        scrapling_stealth,
         "StealthyFetcher",
         SimpleNamespace(async_fetch=fake_fetch),
     )
     monkeypatch.setattr(
-        scrapling_fetchers,
+        scrapling_requests,
         "AsyncFetcher",
         SimpleNamespace(get=fake_fetch),
     )
@@ -158,7 +159,7 @@ def test_browse_url_does_not_cleanup_basic_mode(monkeypatch) -> None:
 
     monkeypatch.setattr(scrapling_mod, "_reset_singleton_browser_tab", fake_cleanup)
     monkeypatch.setattr(
-        scrapling_fetchers,
+        scrapling_requests,
         "AsyncFetcher",
         SimpleNamespace(get=fake_fetch),
     )
@@ -174,3 +175,39 @@ def test_browse_url_does_not_cleanup_basic_mode(monkeypatch) -> None:
     assert result.html_content == "<html><body>ok</body></html>"
     assert cleanup == []
     assert seen_kwargs["stealthy_headers"] is False
+
+
+def test_basic_mode_does_not_import_stealth_chrome(monkeypatch) -> None:
+    """basic-mode fetches must not touch scrapling.fetchers.stealth_chrome.
+
+    Importing the stealth module pulls in browserforge-driven header
+    generation on some platforms and fails with
+    "No headers based on this input can be generated" before our
+    basic-mode code path even runs. Defer it strictly to the branches
+    that need it.
+    """
+    import sys
+
+    # Make sure the stealth submodule is not loaded yet so we can observe
+    # the import side effect of a basic-mode call.
+    monkeypatch.delitem(sys.modules, "scrapling.fetchers.stealth_chrome", raising=False)
+
+    seen_kwargs = {}
+
+    async def fake_fetch(url: str, **kwargs):
+        seen_kwargs.update(kwargs)
+        return SimpleNamespace(html_content="<html><body>ok</body></html>")
+
+    monkeypatch.setattr(
+        scrapling_requests,
+        "AsyncFetcher",
+        SimpleNamespace(get=fake_fetch),
+    )
+
+    asyncio.run(
+        scrapling_mod.browse_url("https://example.com", "basic", wait=1000)
+    )
+
+    assert seen_kwargs["stealthy_headers"] is False
+    assert "scrapling.fetchers.stealth_chrome" not in sys.modules
+
