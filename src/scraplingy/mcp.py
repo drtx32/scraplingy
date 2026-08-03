@@ -2,7 +2,10 @@ from os import environ
 from logging import getLogger
 from traceback import format_exc
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    from mcp.server import MCPServer as FastMCP
 
 from scraplingy._fetcher import (
     fetch_page_impl,
