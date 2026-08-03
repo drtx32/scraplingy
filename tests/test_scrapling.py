@@ -102,6 +102,7 @@ def test_reset_singleton_browser_tab_skips_multi_tab_browser(monkeypatch) -> Non
 
 def test_browse_url_resets_resolved_cloakbrowser_tab(monkeypatch) -> None:
     cleanup = []
+    seen_kwargs = {}
 
     async def fake_cleanup(cdp_url: str | None) -> bool:
         cleanup.append(cdp_url)
@@ -112,6 +113,7 @@ def test_browse_url_resets_resolved_cloakbrowser_tab(monkeypatch) -> None:
         return "ws://example/devtools/browser/1"
 
     async def fake_fetch(url: str, **kwargs):
+        seen_kwargs.update(kwargs)
         return SimpleNamespace(html_content="<html><body>ok</body></html>")
 
     monkeypatch.setattr(scrapling_mod, "_resolve_cloakbrowser_cdp", fake_resolve)
@@ -138,16 +140,20 @@ def test_browse_url_resets_resolved_cloakbrowser_tab(monkeypatch) -> None:
 
     assert result.html_content == "<html><body>ok</body></html>"
     assert cleanup == ["ws://example/devtools/browser/1"]
+    assert seen_kwargs["useragent"] == "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+    assert seen_kwargs["network_idle"] is True
 
 
 def test_browse_url_does_not_cleanup_basic_mode(monkeypatch) -> None:
     cleanup = []
+    seen_kwargs = {}
 
     async def fake_cleanup(cdp_url: str | None) -> bool:
         cleanup.append(cdp_url)
         return True
 
     async def fake_fetch(url: str, **kwargs):
+        seen_kwargs.update(kwargs)
         return SimpleNamespace(html_content="<html><body>ok</body></html>")
 
     monkeypatch.setattr(scrapling_mod, "_reset_singleton_browser_tab", fake_cleanup)
@@ -167,3 +173,4 @@ def test_browse_url_does_not_cleanup_basic_mode(monkeypatch) -> None:
 
     assert result.html_content == "<html><body>ok</body></html>"
     assert cleanup == []
+    assert seen_kwargs["stealthy_headers"] is False

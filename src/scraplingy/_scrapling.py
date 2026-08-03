@@ -14,6 +14,13 @@ except ImportError:
     async_playwright = None
 
 
+_STEALTH_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/145.0.0.0 Safari/537.36"
+)
+
+
 async def _resolve_cloakbrowser_cdp(api_url: str) -> str | None:
     """Resolve CDP URL from CloakBrowser HTTP API.
 
@@ -83,7 +90,7 @@ async def browse_url(
         from scrapling.fetchers import AsyncFetcher, StealthyFetcher
 
         if mode == "basic":
-            return await AsyncFetcher.get(url, stealthy_headers=True, cookies=cookies)
+            return await AsyncFetcher.get(url, stealthy_headers=False, cookies=cookies)
 
         try:
             if mode == "stealth":
@@ -94,6 +101,7 @@ async def browse_url(
                     cdp_url=cdp_url,
                     wait=wait,
                     cookies=cookies,
+                    useragent=_STEALTH_USER_AGENT,
                 )
             elif mode == "max-stealth":
                 return await StealthyFetcher.async_fetch(
@@ -106,6 +114,7 @@ async def browse_url(
                     cdp_url=cdp_url,
                     wait=wait,
                     cookies=cookies,
+                    useragent=_STEALTH_USER_AGENT,
                 )
             else:
                 raise ValueError(f"Unknown mode: {mode}")
