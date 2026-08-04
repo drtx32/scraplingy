@@ -21,6 +21,28 @@ _STEALTH_USER_AGENT = (
 )
 
 
+def _load_stealth_fetcher():
+    """Import Scrapling's browser fetcher without fatal header generation."""
+    from browserforge.headers.generator import HeaderGenerator
+
+    original_generate = HeaderGenerator.generate
+
+    def generate_with_fallback(generator, *args, **kwargs):
+        try:
+            return original_generate(generator, *args, **kwargs)
+        except ValueError as exc:
+            if "No headers based on this input can be generated" not in str(exc):
+                raise
+            return {"User-Agent": _STEALTH_USER_AGENT}
+
+    HeaderGenerator.generate = generate_with_fallback
+    try:
+        from scrapling.fetchers.stealth_chrome import StealthyFetcher
+    finally:
+        HeaderGenerator.generate = original_generate
+    return StealthyFetcher
+
+
 async def _resolve_cloakbrowser_cdp(api_url: str) -> str | None:
     """Resolve CDP URL from CloakBrowser HTTP API.
 
@@ -99,11 +121,25 @@ async def browse_url(
         if mode == "basic":
             from scrapling.fetchers.requests import AsyncFetcher
 
-            return await AsyncFetcher.get(url, stealthy_headers=False, cookies=cookies)
+            # curl_cffi's ``cookies`` parameter accepts a mapping or an
+            # iterable of ``(name, value)`` pairs.  The Netscape parser
+            # returns Playwright-compatible cookie dictionaries because the
+            # stealth path needs domain/path/expiry metadata.  Passing those
+            # dictionaries through directly makes curl_cffi unpack each dict
+            # as an iterable and fail with ``too many values to unpack``.
+            curl_cookies = (
+                [(cookie["name"], cookie["value"]) for cookie in cookies]
+                if cookies
+                else None
+            )
+            return await AsyncFetcher.get(
+                url, stealthy_headers=False, cookies=curl_cookies
+            )
 
         try:
+            StealthyFetcher = None
             if mode == "stealth":
-                from scrapling.fetchers.stealth_chrome import StealthyFetcher
+                StealthyFetcher = _load_stealth_fetcher()
 
                 return await StealthyFetcher.async_fetch(
                     url,
@@ -115,7 +151,7 @@ async def browse_url(
                     useragent=_STEALTH_USER_AGENT,
                 )
             elif mode == "max-stealth":
-                from scrapling.fetchers.stealth_chrome import StealthyFetcher
+                StealthyFetcher = _load_stealth_fetcher()
 
                 return await StealthyFetcher.async_fetch(
                     url,
