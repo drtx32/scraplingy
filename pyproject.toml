@@ -19,7 +19,9 @@ dependencies = [
     "lxml>=6.0.2",
     "markdownify>=1.2.0",
     "mcp>=1.28.0,<2",
-    "scrapling[fetchers]~=0.4.7",
+    # Scrapling 0.4.8+ hardcodes Chromium versions absent from the released
+    # browserforge dataset, causing import-time header generation failures.
+    "scrapling[fetchers]>=0.4.7,<0.4.8",
     # Indirect dependencies (security constraints)
     "cryptography>=48.0.1",
     "idna>=3.15",

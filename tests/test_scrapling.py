@@ -2,7 +2,6 @@ import asyncio
 from types import SimpleNamespace
 
 import scrapling.fetchers.requests as scrapling_requests
-import scrapling.fetchers.stealth_chrome as scrapling_stealth
 import scraplingy._scrapling as scrapling_mod
 
 
@@ -121,9 +120,9 @@ def test_browse_url_resets_resolved_cloakbrowser_tab(monkeypatch) -> None:
     monkeypatch.setattr(scrapling_mod, "_reset_singleton_browser_tab", fake_cleanup)
     monkeypatch.setenv("CLOAKBROWSER_API", "https://cloakbrowser-api.example")
     monkeypatch.setattr(
-        scrapling_stealth,
-        "StealthyFetcher",
-        SimpleNamespace(async_fetch=fake_fetch),
+        scrapling_mod,
+        "_load_stealth_fetcher",
+        lambda: SimpleNamespace(async_fetch=fake_fetch),
     )
     monkeypatch.setattr(
         scrapling_requests,
@@ -210,4 +209,3 @@ def test_basic_mode_does_not_import_stealth_chrome(monkeypatch) -> None:
 
     assert seen_kwargs["stealthy_headers"] is False
     assert "scrapling.fetchers.stealth_chrome" not in sys.modules
-
